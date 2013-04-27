@@ -117,8 +117,13 @@ void do_my_thing(struct vdIn *vd) {
 		start = 0;
 	}
 
-	if(count!=0)
-		printf("\033cratio: %d (of %d) in %d\n", ratio/count, average, fpsX);
+	if(count!=0) {
+		if (ratio/count - 10 > average) {
+			printf("\033cratio: %d (of %d) OK in %d\n", ratio/count, average, fpsX);
+		}else{
+			printf("\033cratio: %d (of %d) in %d\n", ratio/count, average, fpsX);
+		}
+	}
 
 	//start = 0;
 }
