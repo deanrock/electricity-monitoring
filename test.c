@@ -151,7 +151,7 @@ void do_my_thing(struct vdIn *vd) {
 
 	if (cur_high > 0) {
 		if (cur_high > red_avg || cur_high_i >= 10) {
-			snprintf(http_req_path, 250, "%s?num=%d&avg=%d", url, red_avg, average);
+			snprintf(http_req_path, 250, "%s?num=%d&avg=%d", url, cur_high, average);
 			make_http_request(http_req_path);
 			cur_high = 0;
 			cur_high_i = 0;
