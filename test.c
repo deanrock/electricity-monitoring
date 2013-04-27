@@ -30,6 +30,23 @@ static int counter = 0;
 static int fpsX = 0;
 char *buf;
 
+
+//CIRCULAR BUFFER
+int circular_buffer[10];
+int cb_start = 0, cb_end = 0, cb_active = 0;
+
+void push_to_buffer(int i) {
+	circular_buffer[cb_end] = i;
+	cb_end = (cb_end + 1) % 10;
+
+	if (cb_active < 10) {
+		cb_active++;
+	}else{
+		cb_start = (cb_start+1)%10;
+	}
+}
+
+//process a frame
 void do_my_thing(struct vdIn *vd) {
 	if(start==0){ 
 			start = time(NULL);
@@ -84,6 +101,15 @@ void do_my_thing(struct vdIn *vd) {
 
 	counter++;
 
+	//average of circular buffer
+	push_to_buffer(ratio/count);
+	
+	int average = 0;
+	int i;
+	for (i=0;i<10;i++) {
+		average+=circular_buffer[i];
+	}
+	average/=10;
 	
 
 	if(difftime(start,stop) <=-1) {
@@ -92,7 +118,7 @@ void do_my_thing(struct vdIn *vd) {
 	}
 
 	if(count!=0)
-		printf("\033cratio: %d in %d\n", ratio/count, fpsX);
+		printf("\033cratio: %d (of %d) in %d\n", ratio/count, average, fpsX);
 
 	//start = 0;
 }
