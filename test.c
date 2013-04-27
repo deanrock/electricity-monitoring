@@ -142,14 +142,15 @@ void do_my_thing(struct vdIn *vd) {
 		start = 0;
 	}
 
-	
+	snprintf(http_req_path, 250, "%s?num=%d&avg=%d", url, (int)(ratio/count), average);
+			make_http_request(http_req_path);
+	printf("%s\n", http_req_path);
 
 	if(count!=0) {
 		if (ratio/count - 10 > average && cb_active == 10) {
 			//http request
 
-			snprintf(http_req_path, 250, "%s?num=%d&avg=%d", url, (int)(ratio/count), average);
-			make_http_request(http_req_path);
+			
 			
 			
 			printf("\033cratio: %d (of %d) OK in %d\n", ratio/count, average, fpsX);
