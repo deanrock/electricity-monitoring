@@ -150,13 +150,14 @@ void do_my_thing(struct vdIn *vd) {
 	int red_avg = ratio/count;
 
 	if (cur_high > 0) {
+		printf("CH ");
 		if (cur_high > red_avg || cur_high_i >= 10) {
 			snprintf(http_req_path, 250, "%s?num=%d&avg=%d", url, cur_high, average);
 			make_http_request(http_req_path);
 			cur_high = 0;
 			cur_high_i = 0;
 
-			printf("\033cratio: %d (of %d) OK in %d\n", red_avg, average, fpsX);
+			printf("ratio: %d (of %d) OK in %d\n", red_avg, average, fpsX);
 		}else{
 			cur_high = red_avg;
 			cur_high_i++;
@@ -166,10 +167,10 @@ void do_my_thing(struct vdIn *vd) {
 	if(count!=0) {
 		if (red_avg - 10 > average && cb_active == 10) {
 			//http request
-
+			
 			cur_high = red_avg;	
 		}else{
-			printf("\033cratio: %d (of %d) in %d\n", red_avg, average, fpsX);
+			printf("ratio: %d (of %d) in %d\n", red_avg, average, fpsX);
 		}
 	}
 
