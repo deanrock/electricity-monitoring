@@ -29,6 +29,8 @@ int width = 320, height = 240, fps = 25, format = V4L2_PIX_FMT_YUYV, i;
 struct vdIn *videoIn;
 char *buf;
 
+int debug = FALSE;
+
 char http_req_path[250];
 
 
@@ -182,7 +184,7 @@ printf("============================================= %d\n", yu);
 			snprintf(http_req_path, 250, "%s?num=%d&avg=%d", url, cur_high, average);
 			make_http_request(http_req_path);
 
-			printf("ratio: %d (of %d) OK\n", cur_high, average);
+			if (debug) printf("ratio: %d (of %d) OK\n", cur_high, average);
 			
 			cur_high = 0;
 			cur_high_i = 0;
@@ -200,11 +202,63 @@ printf("============================================= %d\n", yu);
 			
 			cur_high = red_avg;	
 		}else{
-			printf("ratio: %d (of %d)\n", red_avg, average);
+			if (debug) printf("ratio: %d (of %d)\n", red_avg, average);
 		}
 	}
 
 	//start = 0;
+}
+
+void read_config() {
+	char* path = "settings.conf";
+
+	FILE* file;
+
+	file = fopen(path, "r");
+
+	if (file == NULL) {
+		printf("Cannot open settings.conf\n");
+	}else{
+		char *line = (char*) malloc(sizeof(char)*255);
+		char *token = NULL;
+		
+		while(fgets(line, 255, file) != NULL) {
+			
+
+			if ((token = strsep(&line, "=")) != NULL && line != NULL) {
+				if (strlen (token) > 0 && strlen (line) > 0) {
+					//find setting
+
+					
+					if (line[strlen(line) - 1] == '\n') {
+						line[strlen(line) - 1] = '\0';
+					}
+					
+					if (strcmp("area-of-interest", token) == 0) {
+						
+						area_of_interest = strdup (line);
+					}else if (strcmp("url", token) == 0) {
+						url = strdup(line);
+					}else if (strcmp("device", token) == 0) {
+						dev = strdup(line);
+					}else if (strcmp("debug", token) == 0) {
+						if (strcmp("true", line) == 0) {
+							debug = TRUE;
+						}
+					}
+				}
+			}
+		}
+
+		
+
+		free (line);
+		
+		//free (token);
+		
+		
+		fclose (file);
+	}
 }
 
 void start_webcam() {
@@ -231,16 +285,20 @@ int main(int argc, char**argv) {
 	
 	opterr = 0;
 
-	while ((c = getopt (argc, argv, "jpd:a:u:")) != -1)
+	while ((c = getopt (argc, argv, "djpc:a:u:")) != -1)
 		switch (c)
 		{
 		case 'j':
 			//Capture JPEG and save them to disk
 			format = V4L2_PIX_FMT_MJPEG;
 			break;
-		case 'd':
-			//Device name
+		case 'c':
+			//Device (cam) name
 			dev = strdup(optarg);
+			break;
+
+		case 'd':
+			debug=TRUE;
 			break;
 
 		case 'p':
@@ -268,6 +326,8 @@ int main(int argc, char**argv) {
 		default:
 			abort();
 		}
+
+	read_config();
 
 	if (area_of_interest == NULL) {
 		printf("Area of interest not set!\n");
@@ -299,6 +359,7 @@ int main(int argc, char**argv) {
 
 	//info message
 	printf("Electricity monitoring\n\nDevice: %s\n", dev);
+	printf("URL: %s\n", url);
 	printf("AOI: %d x %d in range %d\n\n", aoi_x, aoi_y, aoi_range);
 
 	start_webcam();
@@ -325,7 +386,7 @@ int main(int argc, char**argv) {
 		captured_frames++;
 		stop_capture = time(NULL);
 		if (difftime(start_capture,stop_capture) <=-1) {
-			printf("captured %d frames in last second\n", captured_frames);
+			if (debug) printf("captured %d frames in last second\n", captured_frames);
 			start_capture = time(NULL);
 			captured_frames = 0;
 		}
