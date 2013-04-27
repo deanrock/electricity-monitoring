@@ -18,7 +18,8 @@
 #include "header.h"
 #include <curl/curl.h>
 
-int take_pictures = 0, aoi_x=-1, aoi_y=-1, aoi_range=-1;
+int take_pictures = 0, aoi_x=-1, aoi_y=-1, aoi_range=-1,
+	capture_jpeg=0, capture_jpeg_i=0;
 
 
 int compress_yuyv_to_jpeg(struct vdIn *vd, unsigned char *buffer, int size, int quality);
@@ -32,6 +33,22 @@ static int fpsX = 0;
 char *buf;
 
 char http_req_path[250];
+
+//capture to file
+void save_to_file(char* b, int size) {
+	char name[50];
+	snprintf(name, 50, "pictures/%d.jpg", capture_jpeg_i);
+	
+	FILE *handleWrite=fopen(name, "wb");
+
+	/*Writing data to file*/
+	fwrite(b, 1, size, handleWrite);
+
+	/*Closing File*/
+	fclose(handleWrite);
+
+	capture_jpeg_i++;
+}
 
 //current high
 
@@ -205,9 +222,14 @@ int main(int argc, char**argv) {
 	
 	opterr = 0;
 
-	while ((c = getopt (argc, argv, "pd:a:u:")) != -1)
+	while ((c = getopt (argc, argv, "jpd:a:u:")) != -1)
 		switch (c)
 		{
+		case 'j':
+			//Capture JPEG and save them to disk
+			capture_jpeg = 1;
+			format = V4L2_PIX_FMT_MJPEG;
+			break;
 		case 'd':
 			//Device name
 			dev = strdup(optarg);
@@ -307,52 +329,43 @@ int main(int argc, char**argv) {
 				//take pictures
 				compress_yuyv_to_jpeg(videoIn, buf, videoIn->framesizeIn, 90);
 
-				FILE *handleWrite=fopen("test.jpg","wb");
-
-				/*Writing data to file*/
-				fwrite(buf, 1, videoIn->framesizeIn, handleWrite);
-
-				/*Closing File*/
-				fclose(handleWrite);
+				save_to_file(buf, videoIn->framesizeIn);
 			}
 			
 			do_my_thing(videoIn);
 			
-		} else {
+		} else if(videoIn->formatIn == V4L2_PIX_FMT_MJPEG) {
 		//memcpy_picture(buffer2, videoIn->tmpbuffer, 
-			struct jpeg_decompress_struct cinfo;
-			struct jpeg_error_mgr jerr;
+			//struct jpeg_decompress_struct cinfo;
+			//struct jpeg_error_mgr jerr;
 			/* libjpeg data structure for storing one row, that is, scanline of an image */
-			unsigned char *line;
-			cinfo.err = jpeg_std_error( &jerr );
+			//unsigned char *line;
+			//cinfo.err = jpeg_std_error( &jerr );
 			/* setup decompression process and source, then read JPEG header */
-			jpeg_create_decompress( &cinfo );
+			//jpeg_create_decompress( &cinfo );
 			/* this makes the library read from infile */
 			//char* x = (char*)malloc(videoIn->framesizeIn*sizeof(char));
 			//memcpy_picture(x, videoIn->tmpbuffer, videoIn->framesizeIn);
 			//jpeg_mem_src( &cinfo, videoIn->tmpbuffer, videoIn->framesizeIn);
 
-			FILE *handleWrite=fopen("test.jpg","wb");
-
-     
-     fwrite(videoIn->tmpbuffer, 1, videoIn->framesizeIn, handleWrite);
-
-     
-     fclose(handleWrite);
+			if (take_pictures) {
+				//take pictures
+				save_to_file(videoIn->tmpbuffer, videoIn->framesizeIn);
+			}
 
 			//FILE *handleRead = fmemopen(videoIn->tmpbuffer, videoIn->framesizeIn, "rb");
-			FILE *handleRead = fopen("test.jpg", "rb");
+			//FILE *handleRead = fopen("test.jpg", "rb");
 
-			jpeg_stdio_src(&cinfo, handleRead);
+			//jpeg_stdio_src(&cinfo, handleRead);
 			
 			
 			/* reading the image header which contains image information */
-			jpeg_read_header( &cinfo, TRUE );
+			//jpeg_read_header( &cinfo, TRUE );
 
-			width = cinfo.image_width;
-		height = cinfo.image_height; 
+			//width = cinfo.image_width;
+		//height = cinfo.image_height; 
 
-		/* Start decompression jpeg here */
+		/* Start decompression jpeg here
 		jpeg_start_decompress( &cinfo );
 			printf("%d\n", width);
 while( cinfo.output_scanline < cinfo.output_height )
@@ -366,7 +379,7 @@ while( cinfo.output_scanline < cinfo.output_height )
 			
 			jpeg_finish_decompress( &cinfo );
 jpeg_destroy_decompress( &cinfo );
-//free( row_pointer[0] );
+//free( row_pointer[0] );*/
 
 			//printf("%d\n", width);
            // DBG("copying frame from input: %d\n", (int)pcontext->id);
