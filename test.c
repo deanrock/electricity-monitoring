@@ -19,13 +19,13 @@
 #include <curl/curl.h>
 
 int take_pictures = 0, aoi_x=-1, aoi_y=-1, aoi_range=-1,
-	capture_jpeg=0, capture_jpeg_i=0;
+	capture_jpeg_i=0;
 
 
 int compress_yuyv_to_jpeg(struct vdIn *vd, unsigned char *buffer, int size, int quality);
 
 char *dev = "/dev/video1", *s, *area_of_interest=NULL, *url=NULL;
-int width = 640, height = 480, fps = 5, format = V4L2_PIX_FMT_MJPEG, i;
+int width = 640, height = 480, fps = 5, format = V4L2_PIX_FMT_YUYV, i;
 struct vdIn *videoIn;
 static time_t start = 0;
 static int counter = 0;
@@ -208,7 +208,7 @@ void start_webcam() {
 
    int id = 4;
     /* open video device and prepare data structure */
-	format = V4L2_PIX_FMT_YUYV;
+	
 	fps=25;
     if(init_videoIn(videoIn, dev, width, height, fps, format, 1, id) < 0) {
         //IPRINT("init_VideoIn failed\n");
@@ -227,7 +227,6 @@ int main(int argc, char**argv) {
 		{
 		case 'j':
 			//Capture JPEG and save them to disk
-			capture_jpeg = 1;
 			format = V4L2_PIX_FMT_MJPEG;
 			break;
 		case 'd':
@@ -335,7 +334,7 @@ int main(int argc, char**argv) {
 			do_my_thing(videoIn);
 			
 		} else if(videoIn->formatIn == V4L2_PIX_FMT_MJPEG) {
-		//memcpy_picture(buffer2, videoIn->tmpbuffer, 
+			memcpy_picture(buf, videoIn->tmpbuffer, videoIn->framesizeIn);
 			//struct jpeg_decompress_struct cinfo;
 			//struct jpeg_error_mgr jerr;
 			/* libjpeg data structure for storing one row, that is, scanline of an image */
@@ -350,7 +349,7 @@ int main(int argc, char**argv) {
 
 			if (take_pictures) {
 				//take pictures
-				save_to_file(videoIn->tmpbuffer, videoIn->framesizeIn);
+				save_to_file(buf, videoIn->framesizeIn);
 			}
 
 			//FILE *handleRead = fmemopen(videoIn->tmpbuffer, videoIn->framesizeIn, "rb");
