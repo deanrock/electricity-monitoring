@@ -16,13 +16,14 @@
 #include <syslog.h>
 #include "v4l2uvc.h"
 #include "header.h"
+#include <curl/curl.h>
 
 int take_pictures = 0, aoi_x=-1, aoi_y=-1, aoi_range=-1;
 
 
 int compress_yuyv_to_jpeg(struct vdIn *vd, unsigned char *buffer, int size, int quality);
 
-char *dev = "/dev/video1", *s, *area_of_interest=NULL;
+char *dev = "/dev/video1", *s, *area_of_interest=NULL, *url=NULL;
 int width = 640, height = 480, fps = 5, format = V4L2_PIX_FMT_MJPEG, i;
 struct vdIn *videoIn;
 static time_t start = 0;
@@ -30,6 +31,30 @@ static int counter = 0;
 static int fpsX = 0;
 char *buf;
 
+char http_req_path[250];
+
+//CURL
+CURL *curl;
+CURLcode res;
+
+void make_http_request(const char* path) {
+	curl = curl_easy_init();
+
+	if (curl) {
+		curl_easy_setopt(curl, CURLOPT_URL, path);
+
+		res = curl_easy_perform(curl);
+
+		if (res != CURLE_OK) {
+			fprintf(stderr, "curl_easy_perform() failed: %s\n",
+              curl_easy_strerror(res));
+		}
+
+		curl_easy_cleanup(curl);
+	}
+
+	return 0;
+}
 
 //CIRCULAR BUFFER
 int circular_buffer[10];
@@ -118,7 +143,12 @@ void do_my_thing(struct vdIn *vd) {
 	}
 
 	if(count!=0) {
-		if (ratio/count - 10 > average) {
+		if (ratio/count - 10 > average && cb_active == 10) {
+			//http request
+
+			snprintf(http_req_path, 250, "%s?num=%s&avg=%s", url, ratio/count, average);
+			make_http_request(http_req_path);
+			
 			printf("\033cratio: %d (of %d) OK in %d\n", ratio/count, average, fpsX);
 		}else{
 			printf("\033cratio: %d (of %d) in %d\n", ratio/count, average, fpsX);
@@ -153,7 +183,7 @@ int main(int argc, char**argv) {
 	
 	opterr = 0;
 
-	while ((c = getopt (argc, argv, "pd:a:")) != -1)
+	while ((c = getopt (argc, argv, "pd:a:u:")) != -1)
 		switch (c)
 		{
 		case 'd':
@@ -169,6 +199,10 @@ int main(int argc, char**argv) {
 		case 'a':
 			//Area of interest (XxY,range) - e.g. 150x150,10 -> from 140,140 to 160,160
 			area_of_interest = strdup(optarg);
+			break;
+
+		case 'u':
+			url = strdup(optarg);
 			break;
 				
 		case '?':
@@ -204,6 +238,11 @@ int main(int argc, char**argv) {
 	if (aoi_x == -1 || aoi_y == -1 || aoi_range == -1) {
 		printf("Area of interest not set (2)!\n");
 		exit(1);
+	}
+
+	if (url == NULL) {
+		printf("URL not set!\n");
+		exit (1);
 	}
 
 	//info message

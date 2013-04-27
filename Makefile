@@ -2,7 +2,7 @@ OBJS = test.o jpeg_utils.o v4l2uvc.o
 CC = gcc
 DEBUG = -g
 CFLAGS = -Wall -c $(DEBUG)
-LFLAGS = -Wall $(DEBUG) -ljpeg
+LFLAGS = -Wall $(DEBUG) -ljpeg -lcurl
 
 electricity-monitoring: $(OBJS)
 	$(CC) $(OBJS) $(LFLAGS) -o electricity-monitoring
