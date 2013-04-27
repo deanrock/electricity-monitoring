@@ -33,6 +33,11 @@ char *buf;
 
 char http_req_path[250];
 
+//current high
+
+int cur_high = 0;
+int cur_high_i = 0;
+
 //CURL
 CURL *curl;
 CURLcode res;
@@ -142,18 +147,29 @@ void do_my_thing(struct vdIn *vd) {
 		start = 0;
 	}
 
-	
+	int red_avg = ratio/count;
+
+	if (cur_high > 0) {
+		if (cur_high > red_avg || cur_high_i >= 10) {
+			snprintf(http_req_path, 250, "%s?num=%d&avg=%d", url, red_avg, average);
+			make_http_request(http_req_path);
+			cur_high = 0;
+			cur_high_i = 0;
+
+			printf("\033cratio: %d (of %d) OK in %d\n", red_avg, average, fpsX);
+		}else{
+			cur_high = red_avg;
+			cur_high_i++;
+		}
+	}
 
 	if(count!=0) {
-		if (ratio/count - 10 > average && cb_active == 10) {
+		if (red_avg - 10 > average && cb_active == 10) {
 			//http request
 
-			snprintf(http_req_path, 250, "%s?num=%d&avg=%d", url, (int)(ratio/count), average);
-			make_http_request(http_req_path);
-			
-			printf("\033cratio: %d (of %d) OK in %d\n", ratio/count, average, fpsX);
+			cur_high = red_avg;	
 		}else{
-			printf("\033cratio: %d (of %d) in %d\n", ratio/count, average, fpsX);
+			printf("\033cratio: %d (of %d) in %d\n", red_avg, average, fpsX);
 		}
 	}
 
