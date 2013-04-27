@@ -157,7 +157,7 @@ void do_my_thing(struct vdIn *vd) {
 			cur_high = 0;
 			cur_high_i = 0;
 
-			printf("ratio: %d (of %d) OK in %d\n", red_avg, average, fpsX);
+			printf("ratio: %d (of %d) OK in %d\n", cur_high, average, fpsX);
 		}else{
 			cur_high = red_avg;
 			cur_high_i++;
