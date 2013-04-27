@@ -17,12 +17,12 @@
 #include "v4l2uvc.h"
 #include "header.h"
 
-int take_pictures = 0;
+int take_pictures = 0, aoi_x=-1, aoi_y=-1, aoi_range=-1;
 
 
 int compress_yuyv_to_jpeg(struct vdIn *vd, unsigned char *buffer, int size, int quality);
 
-char *dev = "/dev/video1", *s;
+char *dev = "/dev/video1", *s, *area_of_interest=NULL;
 int width = 640, height = 480, fps = 5, format = V4L2_PIX_FMT_MJPEG, i;
 struct vdIn *videoIn;
 static time_t start = 0;
@@ -45,9 +45,6 @@ void do_my_thing(struct vdIn *vd) {
     z = 0;
     int ratio=0;
     int count=0;
-    
-    int point_x=110;
-    int point_y=220;
 	
 	int i_height, x;
 	//printf("%d, %d\n", vd->height, vd->width);
@@ -68,8 +65,8 @@ void do_my_thing(struct vdIn *vd) {
             //g = (y - (88 * u) - (183 * v)) >> 8;
 			//b = (y + (454 * u)) >> 8;
 
-            if(i_height >= point_y-20 && i_height <= point_y+20 &&
-				x>=point_x-20 && x<=point_x+20) {
+            if(i_height >= aoi_y-aoi_range && i_height <= aoi_y+aoi_range &&
+				x>=aoi_x-aoi_range && x<=aoi_x+aoi_range) {
 					o = (r > 255) ? 255 : ((r < 0) ? 0 : r);
 					ratio+=o;
 					count++;
@@ -125,7 +122,7 @@ int main(int argc, char**argv) {
 	
 	opterr = 0;
 
-	while ((c = getopt (argc, argv, "pd:")) != -1)
+	while ((c = getopt (argc, argv, "pd:a:")) != -1)
 		switch (c)
 		{
 		case 'd':
@@ -137,6 +134,11 @@ int main(int argc, char**argv) {
 			//Take picture
 			take_pictures = 1;
 			break;
+
+		case 'a':
+			//Area of interest (XxY,range) - e.g. 150x150,10 -> from 140,140 to 160,160
+			area_of_interest = strdup(optarg);
+			break;
 				
 		case '?':
 			if (isprint (optopt))
@@ -147,15 +149,44 @@ int main(int argc, char**argv) {
 			return 1;
 			
 		default:
-			abort ();
+			abort();
 		}
+
+	if (area_of_interest == NULL) {
+		printf("Area of interest not set!\n");
+		exit(1);
+	}else{
+		char *string = NULL;
+		char *token = NULL;
+
+		if ((token = strsep(&area_of_interest, "x")) != NULL) {
+			
+			aoi_x = atoi(token);
+			if((token = strsep(&area_of_interest, ",")) != NULL) {
+				aoi_y = atoi(token);
+				
+				aoi_range = atoi(area_of_interest);
+			}
+		}
+	}
+
+	if (aoi_x == -1 || aoi_y == -1 || aoi_range == -1) {
+		printf("Area of interest not set (2)!\n");
+		exit(1);
+	}
+
+	//info message
+	printf("Electricity monitoring\n\nDevice: %s\n", dev);
+	printf("AOI: %d x %d in range %d\n\n", aoi_x, aoi_y, aoi_range);
 
 	start_webcam();
 
-	buf = malloc(videoIn->framesizeIn);
+	if (take_pictures) {
+		buf = malloc(videoIn->framesizeIn); //buf for converting yuyv to jpeg
+	}
 	
 	while(1) {
-	while(videoIn->streamingState == STREAMING_PAUSED) {
+		while(videoIn->streamingState == STREAMING_PAUSED) {
             usleep(1); // maybe not the best way so FIXME
         }
 
@@ -177,17 +208,7 @@ int main(int argc, char**argv) {
             //DBG("dropping too small frame, assuming it as broken\n");
        //     continue;
        // }
-
-        /* copy JPG picture to global buffer */
-        //pthread_mutex_lock(&pglobal->in[pcontext->id].db);
-
-        /*
-         * If capturing in YUV mode convert to JPEG now.
-         * This compression requires many CPU cycles, so try to avoid YUV format.
-         * Getting JPEGs straight from the webcam, is one of the major advantages of
-         * Linux-UVC compatible devices.
-         */
-	//printf("HI\n");
+		
         if(videoIn->formatIn == V4L2_PIX_FMT_YUYV) {
 
 			if (take_pictures) {
