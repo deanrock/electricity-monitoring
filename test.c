@@ -154,10 +154,13 @@ void do_my_thing(struct vdIn *vd) {
 		if (cur_high > red_avg || cur_high_i >= 10) {
 			snprintf(http_req_path, 250, "%s?num=%d&avg=%d", url, cur_high, average);
 			make_http_request(http_req_path);
+
+			printf("ratio: %d (of %d) OK in %d\n", cur_high, average, fpsX);
+			
 			cur_high = 0;
 			cur_high_i = 0;
 
-			printf("ratio: %d (of %d) OK in %d\n", cur_high, average, fpsX);
+			
 		}else{
 			cur_high = red_avg;
 			cur_high_i++;
