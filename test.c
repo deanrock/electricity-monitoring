@@ -25,14 +25,16 @@ int take_pictures = 0, aoi_x=-1, aoi_y=-1, aoi_range=-1,
 int compress_yuyv_to_jpeg(struct vdIn *vd, unsigned char *buffer, int size, int quality);
 
 char *dev = "/dev/video1", *s, *area_of_interest=NULL, *url=NULL;
-int width = 640, height = 480, fps = 5, format = V4L2_PIX_FMT_YUYV, i;
+int width = 320, height = 240, fps = 25, format = V4L2_PIX_FMT_YUYV, i;
 struct vdIn *videoIn;
-static time_t start = 0;
-static int counter = 0;
-static int fpsX = 0;
 char *buf;
 
 char http_req_path[250];
+
+
+//capture FPS
+time_t start_capture, stop_capture;
+int captured_frames = 0;
 
 //capture to file
 void save_to_file(char* b, int size) {
@@ -74,8 +76,6 @@ void make_http_request(const char* path) {
 
 		curl_easy_cleanup(curl);
 	}
-
-	return 0;
 }
 
 //CIRCULAR BUFFER
@@ -95,12 +95,6 @@ void push_to_buffer(int i) {
 
 //process a frame
 void do_my_thing(struct vdIn *vd) {
-	if(start==0){ 
-			start = time(NULL);
-		   counter = 0;
-	}
-
-
     unsigned char *yuyv;
     int z;
 	
@@ -144,15 +138,15 @@ printf("============================================= %d\n", yu);
 				i_width>=aoi_x-aoi_range && i_width<=aoi_x+aoi_range) {
 				//printf("%d %d\n", yu, z);
 				//break;
-					int r, g, b;
-				    int y, u, v;
+					int r;
+				    int y, v;
 					int o;
 				
 					if(!z)
 				        y = yuyv[0] << 8;
 				    else
 				        y = yuyv[2] << 8;
-				    u = yuyv[1] - 128;
+				    //u = yuyv[1] - 128;
 				    v = yuyv[3] - 128;
 
 				    r = (y + (359 * v)) >> 8;
@@ -170,11 +164,6 @@ printf("============================================= %d\n", yu);
         }
     }
 
-	time_t stop;
-	stop = time(NULL);
-
-	counter++;
-
 	//average of circular buffer
 	push_to_buffer(ratio/count);
 	
@@ -185,12 +174,6 @@ printf("============================================= %d\n", yu);
 	}
 	average/=10;
 	
-
-	if(difftime(start,stop) <=-1) {
-		fpsX = counter;
-		start = 0;
-	}
-
 	int red_avg = ratio/count;
 
 	if (cur_high > 0) {
@@ -199,7 +182,7 @@ printf("============================================= %d\n", yu);
 			snprintf(http_req_path, 250, "%s?num=%d&avg=%d", url, cur_high, average);
 			make_http_request(http_req_path);
 
-			printf("ratio: %d (of %d) OK in %d\n", cur_high, average, fpsX);
+			printf("ratio: %d (of %d) OK\n", cur_high, average);
 			
 			cur_high = 0;
 			cur_high_i = 0;
@@ -217,7 +200,7 @@ printf("============================================= %d\n", yu);
 			
 			cur_high = red_avg;	
 		}else{
-			printf("ratio: %d (of %d) in %d\n", red_avg, average, fpsX);
+			printf("ratio: %d (of %d)\n", red_avg, average);
 		}
 	}
 
@@ -236,7 +219,6 @@ void start_webcam() {
    int id = 4;
     /* open video device and prepare data structure */
 	
-	fps=25;
     if(init_videoIn(videoIn, dev, width, height, fps, format, 1, id) < 0) {
         //IPRINT("init_VideoIn failed\n");
         //closelog();
@@ -335,6 +317,18 @@ int main(int argc, char**argv) {
             //IPRINT("Error grabbing frames\n");
             exit(EXIT_FAILURE);
         }
+
+		if(start_capture==0){ 
+		   start_capture = time(NULL);
+		}
+
+		captured_frames++;
+		stop_capture = time(NULL);
+		if (difftime(start_capture,stop_capture) <=-1) {
+			printf("captured %d frames in last second\n", captured_frames);
+			start_capture = time(NULL);
+			captured_frames = 0;
+		}
 		
         if(videoIn->formatIn == V4L2_PIX_FMT_YUYV) {
 
@@ -348,7 +342,7 @@ int main(int argc, char**argv) {
 			do_my_thing(videoIn);
 			
 		} else if(videoIn->formatIn == V4L2_PIX_FMT_MJPEG) {
-			memcpy_picture(buf, videoIn->tmpbuffer, videoIn->framesizeIn);
+			
 			//struct jpeg_decompress_struct cinfo;
 			//struct jpeg_error_mgr jerr;
 			/* libjpeg data structure for storing one row, that is, scanline of an image */
@@ -363,6 +357,7 @@ int main(int argc, char**argv) {
 
 			if (take_pictures) {
 				//take pictures
+				memcpy_picture(buf, videoIn->tmpbuffer, videoIn->framesizeIn);
 				save_to_file(buf, videoIn->framesizeIn);
 			}
 
