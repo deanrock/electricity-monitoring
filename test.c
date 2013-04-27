@@ -105,40 +105,67 @@ void do_my_thing(struct vdIn *vd) {
     int z;
 	
     yuyv = vd->framebuffer;
-
+int yu=0;
     z = 0;
     int ratio=0;
     int count=0;
 	
-	int i_height, x;
+	int i_height, i_width;
 	//printf("%d, %d\n", vd->height, vd->width);
-    for(i_height = 0; i_height < vd->height;i_height++) {
-        for(x = 0; x < vd->width; x++) {
-            int r, g, b;
-            int y, u, v;
-			int o;
-			
-            if(!z)
-                y = yuyv[0] << 8;
-            else
-                y = yuyv[2] << 8;
-            u = yuyv[1] - 128;
-            v = yuyv[3] - 128;
 
-            r = (y + (359 * v)) >> 8;
+	/*for (i_height = 0; i_height <= aoi_x-aoi_range; i_height++) {
+		for (i_width = 0;i_width < vd->width; i_width++) {
+			yu++;
+
+			if (i_height == aoi_x-aoi_range && i_width == aoi_y-aoi_range) {
+printf("============================================= %d\n", yu);
+			}
+		}
+	}*/
+
+	
+
+	yu = 0;
+	
+	
+    for(i_height = 0; i_height < vd->height;i_height++) {
+        for(i_width = 0; i_width < vd->width; i_width++) {
+
+	//for (i_height = aoi_y-aoi_range; i_height < aoi_y+aoi_range; i_height++ ) {
+	//	for (i_width = aoi_x-aoi_range; i_width < aoi_x + aoi_range; i_width++ ) {
+			
+            
+			
+            
             //g = (y - (88 * u) - (183 * v)) >> 8;
 			//b = (y + (454 * u)) >> 8;
 
             if(i_height >= aoi_y-aoi_range && i_height <= aoi_y+aoi_range &&
-				x>=aoi_x-aoi_range && x<=aoi_x+aoi_range) {
+				i_width>=aoi_x-aoi_range && i_width<=aoi_x+aoi_range) {
+				//printf("%d %d\n", yu, z);
+				//break;
+					int r, g, b;
+				    int y, u, v;
+					int o;
+				
+					if(!z)
+				        y = yuyv[0] << 8;
+				    else
+				        y = yuyv[2] << 8;
+				    u = yuyv[1] - 128;
+				    v = yuyv[3] - 128;
+
+				    r = (y + (359 * v)) >> 8;
+				
 					o = (r > 255) ? 255 : ((r < 0) ? 0 : r);
 					ratio+=o;
 					count++;
 			}
-
+			
             if(z++) {
                 z = 0;
                 yuyv += 4;
+				yu++;
             }
         }
     }
@@ -308,19 +335,6 @@ int main(int argc, char**argv) {
             //IPRINT("Error grabbing frames\n");
             exit(EXIT_FAILURE);
         }
-
-        
-        /*
-         * Workaround for broken, corrupted frames:
-         * Under low light conditions corrupted frames may get captured.
-         * The good thing is such frames are quite small compared to the regular pictures.
-         * For example a VGA (640x480) webcam picture is normally >= 8kByte large,
-         * corrupted frames are smaller.
-         */
-       // if(videoIn->buf.bytesused < minimum_size) {
-            //DBG("dropping too small frame, assuming it as broken\n");
-       //     continue;
-       // }
 		
         if(videoIn->formatIn == V4L2_PIX_FMT_YUYV) {
 
